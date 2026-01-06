@@ -13,9 +13,195 @@ player_type = ['human']
 for i in range(42):
     player_type.append('AI: alpha-beta level '+str(i+1))
 
-def alpha_beta_decision(board, turn, ai_level, queue, max_player):
-    # random move (to modify)
-    queue.put(board.get_possible_moves()[rnd.randint(0, len(board.get_possible_moves()) - 1)])
+def alpha_beta_decision(board, turn, ai_level, queue, player):
+    possible_moves = board.get_possible_moves()
+    best_move = possible_moves[0]
+    best_value = -2
+    alpha = -2
+    beta = 2
+
+    for move in possible_moves:
+        updated_board = board.copy()
+
+        col = move
+        row_to_play = None
+        for r in range(6):
+            if updated_board.grid[col][r] == 0:
+                row_to_play = r
+                break
+
+        if row_to_play is None:
+            continue
+
+        updated_board.grid[col][row_to_play] = turn % 2 + 1
+
+        value = min_value_ab(updated_board, turn + 1, ai_level, alpha, beta, player)
+        if value > best_value:
+            best_value = value
+            best_move = move
+        alpha = max(alpha, best_value)
+
+    queue.put(best_move)
+
+
+def max_value_ab(board, turn, depth, alpha, beta, player):
+    if board.check_victory():
+        return -1
+
+    if depth <= 0:
+        return board.eval(player)
+
+    possible_moves = board.get_possible_moves()
+    if not possible_moves:
+        return 0
+
+    value = -2
+    for move in possible_moves:
+        updated_board = board.copy()
+
+        col = move
+        row_to_play = None
+        for r in range(6):
+            if updated_board.grid[col][r] == 0:
+                row_to_play = r
+                break
+        if row_to_play is None:
+            continue
+
+        updated_board.grid[col][row_to_play] = turn % 2 + 1
+
+        value = max(value, min_value_ab(updated_board, turn + 1, depth - 1, alpha, beta))
+        if value >= beta:
+            return value
+        alpha = max(alpha, value)
+
+    return value
+
+
+def min_value_ab(board, turn, depth, alpha, beta, player):
+    if board.check_victory():
+        return 1
+
+    if depth <= 0:
+        return board.eval(player)
+
+    possible_moves = board.get_possible_moves()
+    if not possible_moves:
+        return 0
+
+    value = 2
+    for move in possible_moves:
+        updated_board = board.copy()
+
+        col = move
+        row_to_play = None
+        for r in range(6):
+            if updated_board.grid[col][r] == 0:
+                row_to_play = r
+                break
+        if row_to_play is None:
+            continue
+
+        updated_board.grid[col][row_to_play] = turn % 2 + 1
+
+        value = min(value, max_value_ab(updated_board, turn + 1, depth - 1, alpha, beta, player))
+        if value <= alpha:
+            return value
+        beta = min(beta, value)
+
+    return value
+
+
+def minimax_decision(board, turn, ai_level, queue):
+    possible_moves = board.get_possible_moves()
+    best_move = possible_moves[0]
+    best_value = -2
+
+    for move in possible_moves:
+        updated_board = board.copy()
+
+        col = move
+        row_to_play = None
+        for r in range(6):
+            if updated_board.grid[col][r] == 0:
+                row_to_play = r
+                break
+        if row_to_play is None:
+            continue
+
+        updated_board.grid[col][row_to_play] = turn % 2 + 1
+
+        value = min_value(updated_board, turn + 1, ai_level)
+        if value > best_value:
+            best_value = value
+            best_move = move
+
+    queue.put(best_move)
+
+
+def max_value(board, turn, depth, player):
+    if board.check_victory():
+        return -1
+    if depth <= 0:
+        return board.eval(player)
+
+    possible_moves = board.get_possible_moves()
+    if not possible_moves:
+        return 0
+
+    best_value = -2
+    for move in possible_moves:
+        updated_board = board.copy()
+
+        col = move
+        row_to_play = None
+        for r in range(6):
+            if updated_board.grid[col][r] == 0:
+                row_to_play = r
+                break
+        if row_to_play is None:
+            continue
+
+        updated_board.grid[col][row_to_play] = turn % 2 + 1
+
+        value = min_value(updated_board, turn + 1, depth - 1)
+        if value > best_value:
+            best_value = value
+
+    return best_value
+
+
+def min_value(board, turn, depth, player):
+    if board.check_victory():
+        return 1
+    if depth <= 0:
+        return board.eval(player)
+
+    possible_moves = board.get_possible_moves()
+    if not possible_moves:
+        return 0
+
+    worst_value = 2
+    for move in possible_moves:
+        updated_board = board.copy()
+
+        col = move
+        row_to_play = None
+        for r in range(6):
+            if updated_board.grid[col][r] == 0:
+                row_to_play = r
+                break
+        if row_to_play is None:
+            continue
+
+        updated_board.grid[col][row_to_play] = turn % 2 + 1
+
+        value = max_value(updated_board, turn + 1, depth - 1, player)
+        if value < worst_value:
+            worst_value = value
+
+    return worst_value
+
 
 class Board:
     grid = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
@@ -23,7 +209,38 @@ class Board:
 
 
     def eval(self, player):
-        return 0
+        opponent = 3 - player
+        score = 0
+
+        def evaluate_window(window):
+            nonlocal score
+            if window.count(player) == 4:
+                score += 1000
+            elif window.count(player) == 3 and window.count(0) == 1:
+                score += 50
+            elif window.count(player) == 2 and window.count(0) == 2:
+                score += 10
+
+            if window.count(opponent) == 3 and window.count(0) == 1:
+                score -= 80
+
+        # Horizontal
+        for y in range(6):
+            for x in range(4):
+                evaluate_window(list(self.grid[x:x+4, y]))
+
+        # Vertical
+        for x in range(7):
+            for y in range(3):
+                evaluate_window(list(self.grid[x, y:y+4]))
+
+        # Diagonals
+        for x in range(4):
+            for y in range(3):
+                evaluate_window([self.grid[x+i][y+i] for i in range(4)])
+                evaluate_window([self.grid[x+i][y+3-i] for i in range(4)])
+
+        return score
 
     def copy(self):
         new_board = Board()
