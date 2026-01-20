@@ -5,6 +5,10 @@ import random as rnd
 from threading import Thread
 from queue import Queue
 
+from heuristiques import heuristique_early_1, heuristique_early_2, heuristique_early_3
+from heuristiques import heuristique_mid_1
+from heuristiques import heuristique_late_1
+
 
 disk_color = ['white', 'red', 'orange']
 disks = list()
@@ -16,9 +20,10 @@ for i in range(42):
 def alpha_beta_decision(board, turn, ai_level, queue, player):
     possible_moves = board.get_possible_moves()
     best_move = possible_moves[0]
-    best_value = -2
-    alpha = -2
-    beta = 2
+    alpha = -float("inf")
+    beta  =  float("inf")
+    best_value = -float("inf")
+    print("tout :", turn)
 
     for move in possible_moves:
         updated_board = board.copy()
@@ -39,15 +44,21 @@ def alpha_beta_decision(board, turn, ai_level, queue, player):
         if value > best_value:
             best_value = value
             best_move = move
+        print(f"col {move} → value {value}")
         alpha = max(alpha, best_value)
-
+    
     queue.put(best_move)
 
 
 def max_value_ab(board, turn, depth, alpha, beta, player):
+    """
     if board.check_victory():
-        return -1
-
+        last_player = 3 - (turn % 2 + 1)
+        if last_player == player:
+            return float("inf")
+        else:
+            return -float("inf")
+    """
     if depth <= 0:
         return board.eval(player)
 
@@ -55,7 +66,7 @@ def max_value_ab(board, turn, depth, alpha, beta, player):
     if not possible_moves:
         return 0
 
-    value = -2
+    value = -float("inf")
     for move in possible_moves:
         updated_board = board.copy()
 
@@ -70,7 +81,7 @@ def max_value_ab(board, turn, depth, alpha, beta, player):
 
         updated_board.grid[col][row_to_play] = turn % 2 + 1
 
-        value = max(value, min_value_ab(updated_board, turn + 1, depth - 1, alpha, beta))
+        value = max(value, min_value_ab(updated_board, turn + 1, depth - 1, alpha, beta, player))
         if value >= beta:
             return value
         alpha = max(alpha, value)
@@ -79,17 +90,22 @@ def max_value_ab(board, turn, depth, alpha, beta, player):
 
 
 def min_value_ab(board, turn, depth, alpha, beta, player):
+    """
     if board.check_victory():
-        return 1
-
+        last_player = 3 - (turn % 2 + 1)
+        if last_player == player:
+            return float("inf")
+        else:
+            return -float("inf")
+    """
     if depth <= 0:
-        return board.eval(player)
+        return -board.eval(player)
 
     possible_moves = board.get_possible_moves()
     if not possible_moves:
         return 0
 
-    value = 2
+    value = float("inf")
     for move in possible_moves:
         updated_board = board.copy()
 
@@ -115,7 +131,7 @@ def min_value_ab(board, turn, depth, alpha, beta, player):
 def minimax_decision(board, turn, ai_level, queue):
     possible_moves = board.get_possible_moves()
     best_move = possible_moves[0]
-    best_value = -2
+    best_value = -float("inf")
 
     for move in possible_moves:
         updated_board = board.copy()
@@ -149,7 +165,7 @@ def max_value(board, turn, depth, player):
     if not possible_moves:
         return 0
 
-    best_value = -2
+    best_value = -float("inf")
     for move in possible_moves:
         updated_board = board.copy()
 
@@ -181,7 +197,7 @@ def min_value(board, turn, depth, player):
     if not possible_moves:
         return 0
 
-    worst_value = 2
+    worst_value = float("inf")
     for move in possible_moves:
         updated_board = board.copy()
 
@@ -212,33 +228,53 @@ class Board:
         opponent = 3 - player
         score = 0
 
-        def evaluate_window(window):
+        def evaluate_window(window, positions):
             nonlocal score
-            if window.count(player) == 4:
-                score += 1000
-            elif window.count(player) == 3 and window.count(0) == 1:
-                score += 50
-            elif window.count(player) == 2 and window.count(0) == 2:
-                score += 10
+            print(self.grid)
+            filled_cells = np.count_nonzero(self.grid)
+            fill_ratio = filled_cells / 42
 
-            if window.count(opponent) == 3 and window.count(0) == 1:
-                score -= 80
+            if fill_ratio <= 1:
+                #score += heuristique_early_1(self, window, positions, player, opponent)
+                score += heuristique_early_2(self, window, positions, player, opponent)
+                score += heuristique_early_3(self, window, positions, player, opponent)
 
-        # Horizontal
+            elif fill_ratio <= 0.75:
+                score += heuristique_mid_1(self, window, positions, player, opponent)
+
+            else:
+                score += heuristique_late_1(self, window, positions, player, opponent)
+
+
+        # horizontal
         for y in range(6):
             for x in range(4):
-                evaluate_window(list(self.grid[x:x+4, y]))
+                window = list(self.grid[x:x+4, y])
+                positions = [(x+i, y) for i in range(4)]
+                evaluate_window(window, positions)
+
 
         # Vertical
         for x in range(7):
             for y in range(3):
-                evaluate_window(list(self.grid[x, y:y+4]))
+                window = [self.grid[x][y+i] for i in range(4)]
+                positions = [(x, y+i) for i in range(4)]
+                evaluate_window(window, positions)
 
-        # Diagonals
+
+
+        # Diagonal
         for x in range(4):
             for y in range(3):
-                evaluate_window([self.grid[x+i][y+i] for i in range(4)])
-                evaluate_window([self.grid[x+i][y+3-i] for i in range(4)])
+                window = [self.grid[x+i][y+i] for i in range(4)]
+                positions = [(x+i, y+i) for i in range(4)]
+                evaluate_window(window, positions)
+
+        for x in range(4):
+            for y in range(3):
+                window = [self.grid[x+i][y+3-i] for i in range(4)]
+                positions = [(x+i, y+3-i) for i in range(4)]
+                evaluate_window(window, positions)
 
         return score
 
