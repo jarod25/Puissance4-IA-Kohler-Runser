@@ -5,9 +5,7 @@ import random as rnd
 from threading import Thread
 from queue import Queue
 
-from heuristiques import heuristique_early_1, heuristique_early_2, heuristique_early_3
-from heuristiques import heuristique_mid_1
-from heuristiques import heuristique_late_1
+from heuristiques import heuristique_column_line_value, heuristique_open_threes
 
 
 disk_color = ['white', 'red', 'orange']
@@ -51,14 +49,10 @@ def alpha_beta_decision(board, turn, ai_level, queue, player):
 
 
 def max_value_ab(board, turn, depth, alpha, beta, player):
-    """
     if board.check_victory():
         last_player = 3 - (turn % 2 + 1)
-        if last_player == player:
-            return float("inf")
-        else:
-            return -float("inf")
-    """
+        return -2000 if last_player == player else 2000
+    
     if depth <= 0:
         return board.eval(player)
 
@@ -90,16 +84,12 @@ def max_value_ab(board, turn, depth, alpha, beta, player):
 
 
 def min_value_ab(board, turn, depth, alpha, beta, player):
-    """
     if board.check_victory():
         last_player = 3 - (turn % 2 + 1)
-        if last_player == player:
-            return float("inf")
-        else:
-            return -float("inf")
-    """
+        return -2000 if last_player == player else 2000
+    
     if depth <= 0:
-        return -board.eval(player)
+        return board.eval(player)
 
     possible_moves = board.get_possible_moves()
     if not possible_moves:
@@ -228,55 +218,10 @@ class Board:
         opponent = 3 - player
         score = 0
 
-        def evaluate_window(window, positions):
-            nonlocal score
-            print(self.grid)
-            filled_cells = np.count_nonzero(self.grid)
-            fill_ratio = filled_cells / 42
+        score += heuristique_column_line_value(self, player, opponent)
+        score += heuristique_open_threes(self, player, opponent)
 
-            if fill_ratio <= 1:
-                #score += heuristique_early_1(self, window, positions, player, opponent)
-                score += heuristique_early_2(self, window, positions, player, opponent)
-                score += heuristique_early_3(self, window, positions, player, opponent)
-
-            elif fill_ratio <= 0.75:
-                score += heuristique_mid_1(self, window, positions, player, opponent)
-
-            else:
-                score += heuristique_late_1(self, window, positions, player, opponent)
-
-
-        # horizontal
-        for y in range(6):
-            for x in range(4):
-                window = list(self.grid[x:x+4, y])
-                positions = [(x+i, y) for i in range(4)]
-                evaluate_window(window, positions)
-
-
-        # Vertical
-        for x in range(7):
-            for y in range(3):
-                window = [self.grid[x][y+i] for i in range(4)]
-                positions = [(x, y+i) for i in range(4)]
-                evaluate_window(window, positions)
-
-
-
-        # Diagonal
-        for x in range(4):
-            for y in range(3):
-                window = [self.grid[x+i][y+i] for i in range(4)]
-                positions = [(x+i, y+i) for i in range(4)]
-                evaluate_window(window, positions)
-
-        for x in range(4):
-            for y in range(3):
-                window = [self.grid[x+i][y+3-i] for i in range(4)]
-                positions = [(x+i, y+3-i) for i in range(4)]
-                evaluate_window(window, positions)
-
-        return score
+        return -score
 
     def copy(self):
         new_board = Board()
