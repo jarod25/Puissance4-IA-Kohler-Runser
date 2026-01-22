@@ -132,8 +132,8 @@ class Board:
 
         # early game
         if filled <= 10:
-            score += heuristique_column_line_value(self, player, opponent) * 3
-            score += heuristique_3_aligner(self, player, opponent) * 2
+            score += heuristique_column_line_value(self, player, opponent) * 4
+            score += heuristique_3_aligner(self, player, opponent) * 3
             score += heuristique_2_aligner(self, player, opponent)
 
         # mid game
