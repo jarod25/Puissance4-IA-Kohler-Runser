@@ -5,7 +5,7 @@ import random as rnd
 from threading import Thread
 from queue import Queue
 
-from heuristiques import heuristique_column_line_value, heuristique_open_threes
+from heuristiques import heuristique_column_line_value, heuristique_3_aligner, heuristique_2_aligner, heuristique_defaite_victoire
 
 
 disk_color = ['white', 'red', 'orange']
@@ -49,12 +49,10 @@ def alpha_beta_decision(board, turn, ai_level, queue, player):
 
 
 def max_value_ab(board, turn, depth, alpha, beta, player):
-    if board.check_victory():
-        last_player = 3 - (turn % 2 + 1)
-        return -2000 if last_player == player else 2000
-    
+
     if depth <= 0:
-        return board.eval(player)
+        current_player = turn % 2 + 1
+        return board.eval(current_player)
 
     possible_moves = board.get_possible_moves()
     if not possible_moves:
@@ -84,12 +82,10 @@ def max_value_ab(board, turn, depth, alpha, beta, player):
 
 
 def min_value_ab(board, turn, depth, alpha, beta, player):
-    if board.check_victory():
-        last_player = 3 - (turn % 2 + 1)
-        return -2000 if last_player == player else 2000
-    
+
     if depth <= 0:
-        return board.eval(player)
+        current_player = turn % 2 + 1
+        return board.eval(current_player)
 
     possible_moves = board.get_possible_moves()
     if not possible_moves:
@@ -117,98 +113,6 @@ def min_value_ab(board, turn, depth, alpha, beta, player):
 
     return value
 
-
-def minimax_decision(board, turn, ai_level, queue):
-    possible_moves = board.get_possible_moves()
-    best_move = possible_moves[0]
-    best_value = -float("inf")
-
-    for move in possible_moves:
-        updated_board = board.copy()
-
-        col = move
-        row_to_play = None
-        for r in range(6):
-            if updated_board.grid[col][r] == 0:
-                row_to_play = r
-                break
-        if row_to_play is None:
-            continue
-
-        updated_board.grid[col][row_to_play] = turn % 2 + 1
-
-        value = min_value(updated_board, turn + 1, ai_level)
-        if value > best_value:
-            best_value = value
-            best_move = move
-
-    queue.put(best_move)
-
-
-def max_value(board, turn, depth, player):
-    if board.check_victory():
-        return -1
-    if depth <= 0:
-        return board.eval(player)
-
-    possible_moves = board.get_possible_moves()
-    if not possible_moves:
-        return 0
-
-    best_value = -float("inf")
-    for move in possible_moves:
-        updated_board = board.copy()
-
-        col = move
-        row_to_play = None
-        for r in range(6):
-            if updated_board.grid[col][r] == 0:
-                row_to_play = r
-                break
-        if row_to_play is None:
-            continue
-
-        updated_board.grid[col][row_to_play] = turn % 2 + 1
-
-        value = min_value(updated_board, turn + 1, depth - 1)
-        if value > best_value:
-            best_value = value
-
-    return best_value
-
-
-def min_value(board, turn, depth, player):
-    if board.check_victory():
-        return 1
-    if depth <= 0:
-        return board.eval(player)
-
-    possible_moves = board.get_possible_moves()
-    if not possible_moves:
-        return 0
-
-    worst_value = float("inf")
-    for move in possible_moves:
-        updated_board = board.copy()
-
-        col = move
-        row_to_play = None
-        for r in range(6):
-            if updated_board.grid[col][r] == 0:
-                row_to_play = r
-                break
-        if row_to_play is None:
-            continue
-
-        updated_board.grid[col][row_to_play] = turn % 2 + 1
-
-        value = max_value(updated_board, turn + 1, depth - 1, player)
-        if value < worst_value:
-            worst_value = value
-
-    return worst_value
-
-
 class Board:
     grid = np.array([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
                      [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]])
@@ -217,11 +121,30 @@ class Board:
     def eval(self, player):
         opponent = 3 - player
         score = 0
+        filled = np.count_nonzero(self.grid)
 
-        score += heuristique_column_line_value(self, player, opponent)
-        score += heuristique_open_threes(self, player, opponent)
 
-        return -score
+        # gestion de victoire/defaite
+        if self.check_victory():
+            return heuristique_defaite_victoire(self, player, opponent)
+
+        # early game
+        if filled <= 10:
+            score += heuristique_column_line_value(self, player, opponent) * 3
+            score += heuristique_3_aligner(self, player, opponent) * 2
+            score += heuristique_2_aligner(self, player, opponent)
+
+        # mid game
+        elif filled <= 30:
+            score += heuristique_column_line_value(self, player, opponent)
+            score += heuristique_3_aligner(self, player, opponent) * 3
+
+        # late game
+        else:
+            score += heuristique_3_aligner(self, player, opponent)
+
+        return score
+
 
     def copy(self):
         new_board = Board()
