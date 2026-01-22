@@ -39,6 +39,8 @@ def alpha_beta_decision(board, turn, ai_level, queue, player):
         updated_board.grid[col][row_to_play] = turn % 2 + 1
 
         value = min_value_ab(updated_board, turn + 1, ai_level, alpha, beta, player)
+        if ai_level % 2 == 0:
+            value = -value
         if value > best_value:
             best_value = value
             best_move = move
