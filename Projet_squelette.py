@@ -4,6 +4,8 @@ import numpy as np
 import random as rnd
 from threading import Thread
 from queue import Queue
+import os
+import multiprocessing as mp
 
 from heuristiques import heuristique_column_line_value, heuristique_3_aligner, heuristique_2_aligner, heuristique_defaite_victoire
 
@@ -21,7 +23,6 @@ def alpha_beta_decision(board, turn, ai_level, queue, player):
     alpha = -float("inf")
     beta  =  float("inf")
     best_value = -float("inf")
-    print("tout :", turn)
 
     for move in possible_moves:
         updated_board = board.copy()
@@ -40,11 +41,10 @@ def alpha_beta_decision(board, turn, ai_level, queue, player):
 
         value = min_value_ab(updated_board, turn + 1, ai_level, alpha, beta, player)
         if ai_level % 2 == 0:
-            value = -value
+            value = -value # on inverse la valeur pour les niveaux pairs pour avoir le maximum pour l'IA
         if value > best_value:
             best_value = value
             best_move = move
-        print(f"col {move} → value {value}")
         alpha = max(alpha, best_value)
     
     queue.put(best_move)
@@ -316,5 +316,87 @@ button.grid(row=4, column=1)
 
 # Mouse handling
 canvas1.bind('<Button-1>', game.click)
+
+# Ajout du multiprocessing pour l'alpha-beta
+_ctx = None
+_pool = None
+
+_alpha_beta_decision_seq = alpha_beta_decision
+
+def _ab_worker(grid_bytes, turn, ai_level, move, player, alpha):
+    b = Board()
+    b.grid = np.frombuffer(grid_bytes, dtype=np.int64).reshape(7, 6).copy()
+
+    row_to_play = None
+    for r in range(6):
+        if b.grid[move][r] == 0:
+            row_to_play = r
+            break
+    if row_to_play is None:
+        return -1e18, move
+
+    b.grid[move][row_to_play] = turn % 2 + 1
+
+    v = min_value_ab(b, turn + 1, ai_level, alpha, 1e18, player)
+    if ai_level % 2 == 0:
+        v = -v
+    return v, move
+
+def alpha_beta_decision(board, turn, ai_level, queue, player):
+    possible_moves = board.get_possible_moves()
+    if not possible_moves:
+        queue.put(0)
+        return
+
+    if mp.get_start_method(allow_none=True) != "fork":
+        return _alpha_beta_decision_seq(board, turn, ai_level, queue, player)
+
+    alpha = -1e18
+    beta = 1e18
+
+    best_move = possible_moves[0]
+    best_value = -1e18
+
+    b0 = board.copy()
+    col = best_move
+    row_to_play = None
+    for r in range(6):
+        if b0.grid[col][r] == 0:
+            row_to_play = r
+            break
+    if row_to_play is not None:
+        b0.grid[col][row_to_play] = turn % 2 + 1
+        v0 = min_value_ab(b0, turn + 1, ai_level, alpha, beta, player)
+        if ai_level % 2 == 0:
+            v0 = -v0
+        best_value = v0
+        alpha = best_value
+
+    rest = possible_moves[1:]
+    if not rest:
+        queue.put(best_move)
+        return
+
+    global _ctx, _pool
+    if _ctx is None:
+        _ctx = mp.get_context("fork")
+    if _pool is None:
+        n = os.cpu_count() or 1
+        if n > len(rest):
+            n = len(rest)
+        if n < 1:
+            n = 1
+        _pool = _ctx.Pool(processes=n)
+
+    grid_bytes = board.grid.astype(np.int64, copy=False).tobytes()
+    tasks = [(grid_bytes, turn, ai_level, m, player, alpha) for m in rest]
+    results = _pool.starmap(_ab_worker, tasks)
+
+    for v, m in results:
+        if v > best_value:
+            best_value = v
+            best_move = m
+
+    queue.put(best_move)
 
 window.mainloop()

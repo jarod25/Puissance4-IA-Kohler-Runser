@@ -117,11 +117,11 @@ def heuristique_defaite_victoire(board, player, opponent):
 
         # Attaque
         if player_count == 4 :
-            score += 5000
+            score += 50000
 
         # Défense
         if opponent_count == 4 :
-            score -= 3000
+            score -= 30000
 
     # Horizontal
     for row in range(6):
