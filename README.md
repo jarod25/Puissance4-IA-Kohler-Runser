@@ -6,7 +6,7 @@ The project was developed as a two-person academic project at ENSISA. Its object
 
 ## Features
 
-- human-versus-human and human-versus-AI games
+- human-versus-human, human-versus-AI and AI-versus-AI games
 - configurable AI search depth
 - minimax search with alpha-beta pruning
 - move ordering that prioritises central columns
