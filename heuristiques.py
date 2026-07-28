@@ -1,24 +1,23 @@
-
-# heuristique qui favorise les cases du centre
 def heuristique_column_line_value(board, player, opponent):
+    """Reward central and strategically useful board positions."""
     row_weights = [2, 5, 30, 30, 10, 2]
     column_weights = [2, 5, 10, 40, 10, 5, 2]
-
     score = 0
 
-    for col in range(7):
+    for column in range(7):
         for row in range(6):
-            if board.grid[col][row] == player:
-                score += column_weights[col]
+            if board.grid[column][row] == player:
+                score += column_weights[column]
                 score += row_weights[row]
-            elif board.grid[col][row] == opponent:
-                score -= column_weights[col]
+            elif board.grid[column][row] == opponent:
+                score -= column_weights[column]
                 score -= row_weights[row]
 
     return score
 
-# heuristique permettant de défendre si l'adversaire peut aligner 3 pions en bloquant avant que cela n'arrive.
+
 def heuristique_3_aligner(board, player, opponent):
+    """Score lines containing three pieces and one empty cell."""
     score = 0
 
     def evaluate_line(line):
@@ -28,41 +27,37 @@ def heuristique_3_aligner(board, player, opponent):
         opponent_count = line.count(opponent)
         empty_count = line.count(0)
 
-        # Attaque
         if player_count == 3 and empty_count == 1:
             score += 200
 
-        # Défense
         if opponent_count == 3 and empty_count == 1:
             score -= 300
 
-    # Horizontal
     for row in range(6):
-        for col in range(4):
-            line = [board.grid[col + i][row] for i in range(4)]
-            evaluate_line(line)
+        for column in range(4):
+            evaluate_line([board.grid[column + offset][row] for offset in range(4)])
 
-    # Vertical
-    for col in range(7):
+    for column in range(7):
         for row in range(3):
-            line = [board.grid[col][row + i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line([board.grid[column][row + offset] for offset in range(4)])
 
-    # Diagonales
-    for col in range(4):
+    for column in range(4):
         for row in range(3):
-            line = [board.grid[col + i][row + i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line(
+                [board.grid[column + offset][row + offset] for offset in range(4)]
+            )
 
-    for col in range(4):
+    for column in range(4):
         for row in range(3, 6):
-            line = [board.grid[col + i][row - i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line(
+                [board.grid[column + offset][row - offset] for offset in range(4)]
+            )
 
     return score
 
-# heuristique permettant de défendre si l'adversaire peut aligner 2 pions en bloquant avant que cela n'arrive.
+
 def heuristique_2_aligner(board, player, opponent):
+    """Score lines containing two pieces and two empty cells."""
     score = 0
 
     def evaluate_line(line):
@@ -72,41 +67,37 @@ def heuristique_2_aligner(board, player, opponent):
         opponent_count = line.count(opponent)
         empty_count = line.count(0)
 
-        # Attaque
         if player_count == 2 and empty_count == 2:
             score += 50
 
-        # Défense
         if opponent_count == 2 and empty_count == 2:
             score -= 60
 
-    # Horizontal
     for row in range(6):
-        for col in range(4):
-            line = [board.grid[col + i][row] for i in range(4)]
-            evaluate_line(line)
+        for column in range(4):
+            evaluate_line([board.grid[column + offset][row] for offset in range(4)])
 
-    # Vertical
-    for col in range(7):
+    for column in range(7):
         for row in range(3):
-            line = [board.grid[col][row + i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line([board.grid[column][row + offset] for offset in range(4)])
 
-    # Diagonales
-    for col in range(4):
+    for column in range(4):
         for row in range(3):
-            line = [board.grid[col + i][row + i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line(
+                [board.grid[column + offset][row + offset] for offset in range(4)]
+            )
 
-    for col in range(4):
+    for column in range(4):
         for row in range(3, 6):
-            line = [board.grid[col + i][row - i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line(
+                [board.grid[column + offset][row - offset] for offset in range(4)]
+            )
 
     return score
 
-# heuristique permettant de défendre une défaite ou assurer une victoire
+
 def heuristique_defaite_victoire(board, player, opponent):
+    """Return a high terminal score for winning or losing alignments."""
     score = 0
 
     def evaluate_line(line):
@@ -115,36 +106,30 @@ def heuristique_defaite_victoire(board, player, opponent):
         player_count = line.count(player)
         opponent_count = line.count(opponent)
 
-        # Attaque
-        if player_count == 4 :
+        if player_count == 4:
             score += 50000
 
-        # Défense
-        if opponent_count == 4 :
+        if opponent_count == 4:
             score -= 30000
 
-    # Horizontal
     for row in range(6):
-        for col in range(4):
-            line = [board.grid[col + i][row] for i in range(4)]
-            evaluate_line(line)
+        for column in range(4):
+            evaluate_line([board.grid[column + offset][row] for offset in range(4)])
 
-    # Vertical
-    for col in range(7):
+    for column in range(7):
         for row in range(3):
-            line = [board.grid[col][row + i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line([board.grid[column][row + offset] for offset in range(4)])
 
-    # Diagonales
-    for col in range(4):
+    for column in range(4):
         for row in range(3):
-            line = [board.grid[col + i][row + i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line(
+                [board.grid[column + offset][row + offset] for offset in range(4)]
+            )
 
-    for col in range(4):
+    for column in range(4):
         for row in range(3, 6):
-            line = [board.grid[col + i][row - i] for i in range(4)]
-            evaluate_line(line)
+            evaluate_line(
+                [board.grid[column + offset][row - offset] for offset in range(4)]
+            )
 
     return score
-
