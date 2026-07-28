@@ -1,8 +1,10 @@
 # Connect Four AI
 
+[![Python CI](https://github.com/jarod25/Puissance4-IA-Kohler-Runser/actions/workflows/python-ci.yml/badge.svg)](https://github.com/jarod25/Puissance4-IA-Kohler-Runser/actions/workflows/python-ci.yml)
+
 A Python implementation of Connect Four featuring a Tkinter interface and an AI player based on minimax search with alpha-beta pruning.
 
-The project was developed as a two-person academic project at ENSISA. Its objective was to explore adversarial search, heuristic evaluation and performance improvements while keeping the game directly playable through a graphical interface.
+The project was developed as a two-person academic project at ENSISA. Its objective was to explore adversarial search and heuristic evaluation while keeping the game directly playable through a graphical interface.
 
 ## Features
 
@@ -12,8 +14,8 @@ The project was developed as a two-person academic project at ENSISA. Its object
 - move ordering that prioritises central columns
 - heuristic evaluation for offensive and defensive positions
 - different heuristic weighting for early, middle and late game states
-- experimental root-move parallelisation with a sequential fallback
 - graphical interface built with Tkinter
+- automated board and AI tests
 
 ## AI approach
 
@@ -78,18 +80,31 @@ python Puissance4_RUNSER_KOHLER.py
 
 Choose the player type for each side, then start a new game. AI levels represent the search depth used for move evaluation.
 
+## Tests
+
+Compile the source files and run the test suite with:
+
+```bash
+python -m py_compile Puissance4_RUNSER_KOHLER.py heuristiques.py
+python -m unittest discover -s tests -v
+```
+
+The test suite currently covers board initialization, piece stacking, board copies, horizontal, vertical and diagonal victories, and the selection of a legal AI move.
+
+These checks also run automatically through GitHub Actions for pushes and pull requests targeting `main`.
+
 ## Project structure
 
 - `Puissance4_RUNSER_KOHLER.py` contains the graphical interface, board model and alpha-beta search
 - `heuristiques.py` contains the board evaluation functions
+- `tests/` contains the automated test suite
 - `Puissance-4-Rapport_RUNSER_KOHLER.pdf` contains the original academic report in French
 
 ## Current limitations
 
 - high search depths can require a very long computation time
-- the parallel evaluation path depends on the operating system and multiprocessing start method
 - the interface does not currently provide an in-game explanation of heuristic scores
-- automated tests and benchmark results are not yet included
+- benchmark results are not yet included
 - the project documentation does not currently include screenshots or a video demonstration
 
 ## Authors
